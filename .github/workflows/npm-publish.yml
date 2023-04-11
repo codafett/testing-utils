@@ -1,0 +1,51 @@
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Get current release
+        id: release
+        uses: jannemattila/get-version-from-tag@v1
+
+      - name: Check release version
+        run: echo ${{ steps.release.outputs.version }}
+
+      - name: Set node version
+        uses: actions/setup-node@v3
+        with:
+          always-auth: true
+          node-version: '16.17'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Set package.json version
+        id: package_version
+        uses: KageKirin/set-node-package-version@v0
+        with:
+          version: ${{ steps.release.outputs.version }}
+
+      - name: Install node_modules
+        run: npm install
+
+      - name: Build ready for publish
+        run: npm run tsc
+
+      - name: Publish tagged version
+        id: publish
+        uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit new version
+        if: steps.publish.outputs.type != 'none'
+        run: |
+          git config --global user.email machine@tiney.co
+          git config --global user.name tiney
+          git commit -am "Chore: bump package.json and package-lock.json"
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/tiney/tiney-client-utils HEAD:master
