@@ -1,0 +1,45 @@
+{
+  "name": "@tiney/testing-utils",
+  "version": "1.2.292",
+  "description": "Testing utils",
+  "author": "Reuben Greaves <reuben@tiney.co>",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiney/tiney-services.git"
+  },
+  "scripts": {
+    "test": "jest --no-watchman --passWithNoTests",
+    "test:ci": "npm run test -- --ci --runInBand --coverage=true",
+    "transpile": "tsc && tscpaths -p tsconfig.json -s ./src -o ./lib/src",
+    "clean:lib": "rm -rf lib",
+    "transpile:clean": "npm run clean:lib && npm run transpile",
+    "type-check": "tsc --noEmit",
+    "watch": "nodemon -- --inspect=0.0.0.0 ./cli web",
+    "dev": "nodemon -- ./cli web",
+    "prepublishOnly": "npm run transpile:clean"
+  },
+  "dependencies": {
+    "@tiney/infrastructure": "1.2.292",
+    "express": "4.17.1",
+    "supertest": "6.3.3",
+    "typeorm": "0.2.45",
+    "typeorm-transactional-tests": "1.1.5"
+  },
+  "devDependencies": {
+    "@tiney/tsconfig": "1.2.292",
+    "ts-node": "10.9.1",
+    "typescript": "4.7.4"
+  }
+}
