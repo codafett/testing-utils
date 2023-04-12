@@ -1,13 +1,47 @@
 {
-  "extends": "../../tsconfig.json",
+  "ts-node": {
+    "transpileOnly": true,
+    "scope": true
+  },
   "compilerOptions": {
     "baseUrl": ".",
     "outDir": "./lib",
     "removeComments": false,
     "paths": {
-      "*": ["types/*", "node_modules/*"],
-      "types/*": ["src/types/*"],
-      "types": ["src/types"]
-    }
-  }
+      "*": [
+        "types/*",
+        "node_modules/*"
+      ],
+      "types/*": [
+        "src/types/*"
+      ],
+      "types": [
+        "src/types"
+      ]
+    },
+    "target": "es2020",
+    "module": "commonjs",
+    "declaration": true,
+    "noImplicitAny": false,
+    "noEmit": false,
+    "allowJs": false,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "preserveConstEnums": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "skipLibCheck": true,
+    "lib": [
+      "es2020"
+    ]
+  },
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "**/lib"
+  ]
 }
