@@ -20,14 +20,10 @@
     "url": "git+https://github.com/tiney/tiney-services.git"
   },
   "scripts": {
-    "test": "jest --no-watchman --passWithNoTests",
-    "test:ci": "npm run test -- --ci --runInBand --coverage=true",
     "transpile": "tsc && tscpaths -p tsconfig.json -s ./src -o ./lib/src",
-    "clean:lib": "rm -rf lib",
     "transpile:clean": "npm run clean:lib && npm run transpile",
+    "clean:lib": "rm -rf lib",
     "type-check": "tsc --noEmit",
-    "watch": "nodemon -- --inspect=0.0.0.0 ./cli web",
-    "dev": "nodemon -- ./cli web",
     "prepublishOnly": "npm run transpile:clean"
   },
   "dependencies": {
