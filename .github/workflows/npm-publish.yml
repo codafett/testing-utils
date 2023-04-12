@@ -48,4 +48,4 @@ jobs:
           git config --global user.email machine@tiney.co
           git config --global user.name tiney-machine
           git commit -am "Chore: bump package.json and package-lock.json"
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/tiney/tiney-client-utils HEAD:master
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/tiney/tiney-testing-utils HEAD:main
