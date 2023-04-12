@@ -27,7 +27,7 @@
     "prepublishOnly": "npm run transpile:clean"
   },
   "dependencies": {
-    "@tiney/infrastructure": "1.2.292",
+    "@tiney/infrastructure": "latest",
     "express": "4.17.1",
     "supertest": "6.3.3",
     "typeorm": "0.2.45",
