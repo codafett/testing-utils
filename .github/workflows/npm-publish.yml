@@ -33,7 +33,7 @@ jobs:
       - name: Install node_modules
         run: npm install
         env: 
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Transpile TS
         run: npm run transpile
