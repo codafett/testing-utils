@@ -3,7 +3,7 @@ export declare function createServerApp(routeConfig: [{
     path: string;
     router: Router;
 }]): Promise<{
-    app: import("express").Express;
+    app: Express;
     server: unknown;
     agent: unknown;
 }>;
