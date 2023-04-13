@@ -1,16 +1,15 @@
-import { web } from '@tiney/infrastructure';
 import { Router } from 'express';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import request from 'supertest';
 
 export async function createServerApp(
+  app: any,
   routeConfig: [{ path: string; router: Router }],
 ) {
   const routes: Router = Router({ strict: true });
 
   routeConfig.map((rc) => routes.use(rc.path, rc.router));
 
-  const app = await web({ routes });
   let server: unknown;
   let agent: unknown;
 

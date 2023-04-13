@@ -1,53 +1,40 @@
-import {
-  AgentNote,
-  agentNoteService,
-  http,
-  pubsubService,
-} from '@tiney/infrastructure';
+import nock, { InterceptFunction, Interceptor, Options, RequestBodyMatcher, Scope } from 'nock';
 
-export function mockCreateAgentNote(): jest.SpyInstance<
-  Promise<string>,
-  [AgentNote]
-> {
-  return jest
-    .spyOn(agentNoteService, 'createAutoAgentNote')
-    .mockImplementation(() => Promise.resolve('done'));
+export interface HttpCallDefinition {
+  url: string;
+  type: MockHttpCallType,
+  requestBody?: RequestBodyMatcher,
+  responseData?: unknown;
+  interceptorOptions?: Options
+  status?: number;
 }
 
-export function mockPublishTopic() {
-  return jest
-    .spyOn(pubsubService, 'publishTopic')
-    .mockImplementation(() => Promise.resolve('done'));
+export enum MockHttpCallType {
+  GET = 'get',
+  POST = 'post',
+  PUT = 'put',
+  PATCH = 'patch',
+  DELETE = 'delete'
 }
 
-export function getHttpGetMock() {
-  const httpMockGet = jest.fn();
-  http.get = httpMockGet;
-  return httpMockGet;
-}
+const httpCalls: Record<string, (scope: Scope) => InterceptFunction> = ({
+  [MockHttpCallType.GET]: (scope: Scope) => scope.get
+});
 
 export function mockHttpGetCall(
-  responseDefinitions: {
-    status?: number;
-    url: string;
-    data: unknown;
-  }[],
+  basePath: string,
+  httpCallDefinitions: HttpCallDefinition[],
+  allowUnmockedRequests: boolean
 ) {
-  const httpGetMock = getHttpGetMock();
-  httpGetMock.mockImplementation((url) => {
-    const responseDefinition = responseDefinitions.find(
-      (rd) => rd.url === url,
-    );
-    if (responseDefinition) {
-      return Promise.resolve({
-        data: { data: responseDefinition.data },
-        status: responseDefinition.status || 200,
-      });
-    }
-    console.error(`Url: ${url} has not been mocked`);
-    return Promise.reject(
-      new Error(`Url: ${url} has not been mocked`),
-    );
-  });
-  return httpGetMock;
+  const scope = nock(basePath, { allowUnmocked: allowUnmockedRequests});
+  httpCallDefinitions.forEach(
+    (httpCallDefinition => {
+      const httpInterceptor: Interceptor = 
+        httpCalls[httpCallDefinition.type]
+        (scope)
+        (httpCallDefinition.url, httpCallDefinition.requestBody, httpCallDefinition.interceptorOptions)
+      httpInterceptor.reply(httpCallDefinition.status || 200, { data: httpCallDefinition.responseData });
+    })
+  )
+  return scope;
 }
