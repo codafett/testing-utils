@@ -33,6 +33,7 @@
     "jest-runner-groups": "1.1.1",
     "nock": "^13.3.0",
     "supertest": "6.3.3",
+    "typedi": "^0.8.0",
     "typeorm": "0.2.45",
     "typeorm-transactional-tests": "1.1.5"
   },
