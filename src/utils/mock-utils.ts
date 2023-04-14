@@ -10,6 +10,7 @@ export interface HttpCallDefinition {
 }
 
 export enum MockHttpCallType {
+  HEAD = 'head',
   GET = 'get',
   POST = 'post',
   PUT = 'put',
@@ -18,15 +19,20 @@ export enum MockHttpCallType {
 }
 
 const httpCalls: Record<string, (scope: Scope) => InterceptFunction> = ({
-  [MockHttpCallType.GET]: (scope: Scope) => scope.get
+  [MockHttpCallType.HEAD]: (scope: Scope) => scope.head,
+  [MockHttpCallType.GET]: (scope: Scope) => scope.get,
+  [MockHttpCallType.POST]: (scope: Scope) => scope.post,
+  [MockHttpCallType.PUT]: (scope: Scope) => scope.put,
+  [MockHttpCallType.PATCH]: (scope: Scope) => scope.patch,
+  [MockHttpCallType.DELETE]: (scope: Scope) => scope.delete
 });
 
-export function mockHttpGetCall(
+export function mockHttpCall(
   basePath: string,
   httpCallDefinitions: HttpCallDefinition[],
-  allowUnmockedRequests: boolean
+  allowUnmockedRequests?: boolean
 ) {
-  const scope = nock(basePath, { allowUnmocked: allowUnmockedRequests});
+  const scope = nock(basePath, { allowUnmocked: allowUnmockedRequests || false});
   httpCallDefinitions.forEach(
     (httpCallDefinition => {
       const httpInterceptor: Interceptor = 
