@@ -1,25 +1,25 @@
-import { Router } from 'express';
-// eslint-disable-next-line import/no-extraneous-dependencies
+import { Router, Express } from 'express';
 import request from 'supertest';
 
 export async function createServerApp(
-  app: any,
+  app: Express,
   routeConfig: [{ path: string; router: Router }],
 ) {
   const routes: Router = Router({ strict: true });
 
   routeConfig.map((rc) => routes.use(rc.path, rc.router));
 
+  const expressApp = await app({ routes });
   let server: unknown;
   let agent: unknown;
 
   const getServer = new Promise((resolve) => {
-    server = app.listen(() => {
-      agent = request.agent(app);
+    server = expressApp.listen(() => {
+      agent = request.agent(expressApp);
       resolve(agent);
     });
   });
 
   await getServer;
-  return { app, server, agent };
+  return { expressApp, server, agent };
 }
