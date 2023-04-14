@@ -36,7 +36,7 @@ const httpCalls: Record<
   [MockHttpCallType.DELETE]: (scope: Scope) => scope.delete,
 };
 
-export function mockHttpCall(
+export function mockHttpCalls(
   basePath: string,
   httpCallDefinitions: HttpCallDefinition[],
   allowUnmockedRequests?: boolean,
