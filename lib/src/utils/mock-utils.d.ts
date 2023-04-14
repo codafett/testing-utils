@@ -8,10 +8,11 @@ export interface HttpCallDefinition {
     status?: number;
 }
 export declare enum MockHttpCallType {
+    HEAD = "head",
     GET = "get",
     POST = "post",
     PUT = "put",
     PATCH = "patch",
     DELETE = "delete"
 }
-export declare function mockHttpGetCall(basePath: string, httpCallDefinitions: HttpCallDefinition[], allowUnmockedRequests: boolean): nock.Scope;
+export declare function mockHttpCall(basePath: string, httpCallDefinitions: HttpCallDefinition[], allowUnmockedRequests?: boolean): nock.Scope;
