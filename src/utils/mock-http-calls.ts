@@ -36,13 +36,18 @@ const httpCalls: Record<
   [MockHttpCallType.DELETE]: (scope: Scope) => scope.delete,
 };
 
+export interface HttpMockOptions {
+  allowUnmockedRequests?: boolean,
+  persist? : boolean
+}
+
 export function mockHttpCalls(
   basePath: string,
   httpCallDefinitions: HttpCallDefinition[],
-  allowUnmockedRequests?: boolean,
+  options: HttpMockOptions = { persist: true}
 ) {
   const scope = nock(basePath, {
-    allowUnmocked: allowUnmockedRequests || false,
+    allowUnmocked: options?.allowUnmockedRequests || false,
   });
   httpCallDefinitions.forEach((httpCallDefinition) => {
     const httpInterceptor: Interceptor = httpCalls[
@@ -57,5 +62,8 @@ export function mockHttpCalls(
       data: httpCallDefinition.responseData,
     });
   });
+  if (options.persist) {
+    scope.persist()
+  }
   return scope;
 }
