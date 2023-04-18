@@ -44,7 +44,7 @@ export interface HttpMockOptions {
 export function mockHttpCalls(
   basePath: string,
   httpCallDefinitions: HttpCallDefinition[],
-  options: HttpMockOptions = { persist: true}
+  options: HttpMockOptions = { persist: false}
 ) {
   const scope = nock(basePath, {
     allowUnmocked: options?.allowUnmockedRequests || false,
