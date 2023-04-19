@@ -2,7 +2,7 @@ import { Router, Express } from 'express';
 import request from 'supertest';
 
 export async function createServerApp(
-  app: ({ routes } : { routes: Router }) => Promise<Express>,
+  app: ({ routes }: { routes: Router }) => Promise<Express>,
   routeConfig: [{ path: string; router: Router }],
 ) {
   const routes: Router = Router({ strict: true });

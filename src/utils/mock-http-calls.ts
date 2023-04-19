@@ -37,14 +37,14 @@ const httpCalls: Record<
 };
 
 export interface HttpMockOptions {
-  allowUnmockedRequests?: boolean,
-  persist? : boolean
+  allowUnmockedRequests?: boolean;
+  persist?: boolean;
 }
 
 export function mockHttpCalls(
   basePath: string,
   httpCallDefinitions: HttpCallDefinition[],
-  options: HttpMockOptions = { persist: false}
+  options: HttpMockOptions = { persist: false },
 ) {
   const scope = nock(basePath, {
     allowUnmocked: options?.allowUnmockedRequests || false,
@@ -63,7 +63,7 @@ export function mockHttpCalls(
     });
   });
   if (options.persist) {
-    scope.persist()
+    scope.persist();
   }
   return scope;
 }

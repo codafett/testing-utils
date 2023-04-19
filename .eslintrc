@@ -1,0 +1,84 @@
+{
+  "env": {
+    "node": true,
+    "es6": true,
+    "jest": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "extends": [
+    "airbnb-base",
+    "plugin:prettier/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "plugins": [
+    "import",
+    "simple-import-sort",
+    "prettier",
+    "@typescript-eslint",
+    "no-only-tests"
+  ],
+  "rules": {
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": [
+          "**/utilities/**",
+          "**/pacts.publish.ts",
+          "**/*.test.ts",
+          "**/test/**",
+          "**/jest.config.js"
+        ]
+      }
+    ],
+    "@typescript-eslint/no-var-requires": [
+      "off",
+      {
+        "extensions": [".js"]
+      }
+    ],
+    "no-useless-constructor": "off",
+    "@typescript-eslint/no-useless-constructor": "error",
+    "import/no-unresolved": 0,
+    "@typescript-eslint/explicit-function-return-type": 0,
+    "import/prefer-default-export": 0,
+    "import/named": 0,
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "js": "never",
+        "ts": "never",
+        "mjs": "never"
+      }
+    ],
+    "import/no-cycle": 0,
+    "@typescript-eslint/explicit-member-accessibility": 0,
+    "class-methods-use-this": 0,
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true
+      }
+    ],
+    "simple-import-sort/imports": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"]}],
+    "no-only-tests/no-only-tests": "error"
+  },
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [".js", ".ts"]
+    },
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx", ".json"]
+      }
+    }
+  },
+  "overrides": [
+    {
+      "files": ["*.json"],
+      "rules": { "no-unused-expressions": "off" }
+    }
+  ]
+}
