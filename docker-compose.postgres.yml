@@ -1,0 +1,10 @@
+version: '3.7'
+
+services: 
+  mysql:
+    image: mysql/mysql-server:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    env_file:
+      - ./mysql-service-env
+    ports:
+      - 3333:3306/tcp

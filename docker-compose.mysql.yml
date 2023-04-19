@@ -1,0 +1,9 @@
+version: '3.7'
+
+services: 
+  postgres:
+    image: postgres:11
+    env_file:
+      - ./postgres-service-env
+    ports:
+      - 5555:5432/tcp
