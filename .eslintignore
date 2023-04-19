@@ -1,0 +1,11 @@
+types/*
+
+**/dist/*
+**/lib/*
+
+node_modules
+
+packages/**/node_modules
+utilities/vault/*
+
+**/templates/*
