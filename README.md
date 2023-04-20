@@ -1,8 +1,25 @@
 # `@tiney/testing-utils`
 
-# Introduction
+<!-- TOC tocDepth:2..3 chapterDepth:2..6 -->
 
-## What's it for
+- [Introduction](#introduction)
+  - [What's it for](#whats-it-for)
+  - [What's it not for](#whats-it-not-for)
+- [Usage](#usage)
+- [Setting up db/api testing in a service](#setting-up-dbapi-testing-in-a-service)
+  - [Folder](#folder)
+  - [Setting up the scripts](#setting-up-the-scripts)
+  - [Setting up docker-compose](#setting-up-docker-compose)
+  - [Setting up Jest](#setting-up-jest)
+  - [CI/CD Pipeline](#cicd-pipeline)
+  - [Anatomy of a API/DB controller test file](#anatomy-of-a-apidb-controller-test-file)
+
+<!-- /TOC -->
+
+
+## Introduction
+
+### What's it for
 This packages is to enable the use of API/Db testing within services.
 
 It was originally delivered in @tiney/infra but needs to live in it's own package so that we can update independently in other packages
@@ -10,10 +27,10 @@ when we update the references in this package (i.e. typeORM and Jest in particul
 
 The idea is that with these utils you can test services from the API call layer testing all the way to the database layer.
 
-## What's it not for
+### What's it not for
 It's not going to enable end-to-end testing of services. The idea is to mock out external calls and focus on testing that an end point accepts the correct input and returns the right output
 
-# Usage
+## Usage
 
 This package should be installed as a DEV dependency only
 
@@ -21,7 +38,7 @@ This package should be installed as a DEV dependency only
 npm i @tiney/testing-utils@latest
 ```
 
-# Setting up db/api testing in a service
+## Setting up db/api testing in a service
 
 Testing utils currently supports MySql and Postgres database testing.
 
@@ -33,10 +50,10 @@ It's also possible to run specific test seeds - although I've not actually tried
 
 Once the db is up and running there are some helper methods to set data up and read it back from the DB with having to use service repo's etc.
 
-## Folder
+### Folder
 It's recommended to create a `test` folder in the root project folder to hold all the project test assets
 
-## Setting up the scripts
+### Setting up the scripts
 The docker container takes a few seconds to be up and running so we need to wait for the service to be ready before running any tests.
 
 Copy the `.wait-for-it.sh` file from the root of this project to the root of the service being set up for testing.
@@ -67,24 +84,24 @@ __`pretest`__ - used with the `test` command to make sure that the db starts bef
 
 __`posttest`__ - used with the `test` command to make sure the db server staops after the tests have finished - will also make sure the db is stopped if the tests fail or throw an exception
 
-## Setting up docker-compose
+### Setting up docker-compose
 Create a file called `docker-compose.test.yml` in the `test` folder of the project.
 
 Copy the contents of either the `docker-compose.mysql.yml` or `docker-compose.postgres.yml` files from this project and adjust if/where necessary.
 
-### Ports
+#### Ports
 The docker-compose files use non-standard ports for testing locally. This is just to avoid conflicting with a standard installation of the db servers that might be running.
 
-### Env Settings
+#### Env Settings
 These compose files also make use of a file called `mysql-service-env` or `postgres-service-env` which should be created in the test folder. These files should contain any DB server settings required by the docker-compose files.
 
 You can copy the contents of either `.env.mysql-service-env.skel` or `.env.postgres-service-env.skel` as required.
 
 You need to update these files to replace the holder `` with the actual name of your test database (which can be anything, you just need to be consistent as you'll use this name later setting up the jest scripts)
 
-## Setting up Jest
+### Setting up Jest
 
-### Database Settings
+#### Database Settings
 First you need to set up the database settings.
 
 This file sets up all the TypeORM entities and migration details and is used at both global and individual test level which is why these settings are extracted to a common file.
@@ -113,7 +130,7 @@ __N.B.__ the value of the `databaseName` setting must be the same value entered 
 
 The location of entities seeds and migrationsDir are usually the same, but you may need to update these if they don't match your project.
 
-### Env Settings
+#### Env Settings
 In some cases you will need to mock out any environment settings that are retrieved in code using `getEnvs` method from `@tiney/infrastrucutre` project.
 
 Any settings that need to be used should be entered into a new file called `test-end-settings.ts` which needs to be created in the `test` folder.
@@ -129,7 +146,7 @@ export default {
 };
 ```
 
-### Jest Global Settings
+#### Jest Global Settings
 Create another file in the `test` folder called `jest-global0setup.ts`.
 
 This file runs ONCE, BEFORE jest runs any tests and is used to create the DB and run migrations.
@@ -147,7 +164,7 @@ export default jestGlobalSetUp(databaseSettings);
 
 ```
 
-### DB Set up file
+#### DB Set up file
 Create another file in the `test` folder called `setup-db-test-fixtures.ts`
 
 This file is responsible for setting up the db before and after each test.
@@ -166,7 +183,7 @@ setUpTestFixtures(sqlFactory, databaseSettings);
 
 ```
 
-### Env Set up file
+#### Env Set up file
 This step is only required if you need to mock env variables returned from calls to `getEnvs` and only works by being in a separate file to the setting up of test fixture
 
 Create another file in the `test` folder called `setup-get-envs-mock.ts`
@@ -195,7 +212,7 @@ const serviceConfig = Container.get(ServiceConfiguration);
 
 __*N.B. The call to service config is only required if you are mocking out environment variables that hold urls of other services.*__
 
-#### __Mocking on specific tests only: generateSlug__
+##### __Mocking on specific tests only: generateSlug__
 
 In billing there was a requirement to know the output of the `generateSlug` method and so it was mocked out. However, if we mocked this value at the global level then other tests failed (because every call to `generateSlug` returned the same value)
 
@@ -281,7 +298,7 @@ These can then be used in your test files as follows:
   });
 ```
 
-#### Other useful mocks
+##### Other useful mocks
 A couple of other mocks I found useful (and have added support for) are creating agent notes and publishing topics. Technically these just require mocking `async` calls so I added support for that in `mock-promise.ts`
 
 To use these you can set up the following mocks in your `setup-get-envs-mock.ts` file:
@@ -304,7 +321,7 @@ export function mockPublishTopic() {
 }
 ```
 
-### Database Utils
+#### Database Utils
 This package provides some quick and easy methods to populating and reading data in your database.
 
 If you need a specific repository then you can use the following import:
@@ -340,7 +357,7 @@ export async function findEntity<ET>: Promise<ET[]>
 
 ```
 
-### Mocking API calls
+#### Mocking API calls
 In order to test the full call of an api (especially tiney services) we will need to mock out any calls to external services, the most obvious ones being calls to authentication
 
 To do this there are some helper utils that essentially wrap `nock` to provide a quick set-up.
@@ -426,7 +443,35 @@ The difference here is the additional parameters object passed as
 
 this tells `nock` to keep returning the same result for each call.
 
-## Anatomy of a API/DB controller test file
+### Setting up the CI/CD Pipeline
+In order for the tests to run on the CI pipeline you have to make one change to the `config.yml` file found in the `.circelci` folder in the root folder of `tiney-services`
+
+Find the job configuration for your service which will look something like this:
+
+```yml
+  tiney-billing-service:
+    when: << pipeline.parameters.tiney-billing-service >>
+    jobs:
+      - test-service:
+          <<: *run-on-branch-or-deploy-tag
+          package: << pipeline.parameters.tiney-billing-service >>
+```
+
+and change `test-service` for either `test-service-with-mysql` or `test-service-with-postgres` as required.
+
+You also need to pass a new parameter `sql-database` to the job containing the name of youre test database - this needs to be the same value you set up in `test-env-settings.ts`
+
+After you've finished your job configuration would look like this:
+```yml
+  tiney-billing-service:
+    when: << pipeline.parameters.tiney-billing-service >>
+    jobs:
+      - test-service-with-mysql:
+          <<: *run-on-branch-or-deploy-tag
+          package: << pipeline.parameters.tiney-billing-service >>
+          sql-database: billing-service-test-db
+```
+### Anatomy of a API/DB controller test file
 Putting all the parts together this is what's require to set up a test file to test an API end point.
 
 Generally speaking each end point is called a `controller` in tiney-services and had a folder relating to the route, this folder contains an `index.ts` file that defines the route end points.
