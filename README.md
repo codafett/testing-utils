@@ -34,8 +34,10 @@ It's not going to enable end-to-end testing of services. The idea is to mock out
 
 This package should be installed as a DEV dependency only
 
+You should also install `ts-jest` and optionally `jest-expect-message`
+
 ```
-npm i @tiney/testing-utils@latest
+npm i @tiney/testing-utils@latest ts-jest jest-expect-message --save-dev
 ```
 
 ## Setting up db/api testing in a service
@@ -56,13 +58,12 @@ It's recommended to create a `test` folder in the root project folder to hold al
 ### Setting up the scripts
 The docker container takes a few seconds to be up and running so we need to wait for the service to be ready before running any tests.
 
-Copy the `.wait-for-it.sh` file from the root of this project to the root of the service being set up for testing.
+Copy the `.wait-for-it.sh` file from the root of this project to the `test` folder created in teh previous step.
 
 Now you can add the following scripts to the `scripts` section of the projects `package.json` for running tests:
 
 ```json
     "test:command": "TZ=utc APP_ENV=local jest --group=-pact/provider --group=-pact/consumer --no-watchman --passWithNoTests",
-    "test:db:up": "chmod +x ./.wait-for-it.sh && docker compose -f test/docker-compose.test.yml up -d && ./.wait-for-it.sh -t 0 127.0.0.1:3333 -- echo 'db is up'",
     "test:db:down": "docker compose -f test/docker-compose.test.yml down",
     "test": "npm run test:command",
     "test:ci": "npm run test:command -- --ci --runInBand --coverage=true",
@@ -71,8 +72,6 @@ Now you can add the following scripts to the `scripts` section of the projects `
 ```
 
 __`test:command`__ - is the base command for running test and has been extracted so it can be re-used in other scripts
-
-__`test:db:up`__ - start the docker container running the db. This is useful if you want to make sure the db has the correct schema applied and to see what seeds/migration etc have run.
 
 __`test:db:down`__ - stops the docker container running the database
 
@@ -83,6 +82,21 @@ __`test:ci`__ - the script used by the ci server to run tests (to collect covera
 __`pretest`__ - used with the `test` command to make sure that the db starts before the tests are run
 
 __`posttest`__ - used with the `test` command to make sure the db server staops after the tests have finished - will also make sure the db is stopped if the tests fail or throw an exception
+
+**There's one more command you need, but this one is db type specific:**
+
+__`test:db:up`__ - start the docker container running the db. This is useful if you want to make sure the db has the correct schema applied and to see what seeds/migration etc have run.
+
+For MySql add:
+```json
+    "test:db:up": "chmod +x test/.wait-for-it.sh && docker compose -f test/docker-compose.test.yml up -d && test/.wait-for-it.sh -t 0 127.0.0.1:3333 -- echo 'db is up'",
+```
+
+For Postgres add:
+```json
+    "test:db:up": "chmod +x test/.wait-for-it.sh && docker compose -f test/docker-compose.test.yml up -d && test/.wait-for-it.sh -t 0 127.0.0.1:555 -- echo 'db is up'",
+```
+
 
 ### Setting up docker-compose
 Create a file called `docker-compose.test.yml` in the `test` folder of the project.
@@ -97,7 +111,9 @@ These compose files also make use of a file called `mysql-service-env` or `postg
 
 You can copy the contents of either `.env.mysql-service-env.skel` or `.env.postgres-service-env.skel` as required.
 
-You need to update these files to replace the holder `` with the actual name of your test database (which can be anything, you just need to be consistent as you'll use this name later setting up the jest scripts)
+You need to update these files to replace the holder `**YOUR_DB_NAME_HERE**` with the actual name of your test database (which can be anything, you just need to be consistent as you'll use this name later setting up the jest scripts)
+
+**__N.B. Postgres doesn't allow `-` character in database names!!__**
 
 ### Setting up Jest
 
@@ -147,7 +163,7 @@ export default {
 ```
 
 #### Jest Global Settings
-Create another file in the `test` folder called `jest-global0setup.ts`.
+Create another file in the `test` folder called `jest-global-setup.ts`.
 
 This file runs ONCE, BEFORE jest runs any tests and is used to create the DB and run migrations.
 
@@ -162,6 +178,34 @@ import databaseSettings from './database-settings';
 
 export default jestGlobalSetUp(databaseSettings);
 
+```
+
+#### Update jest.config
+In `jest.config` you need to set up jest to use the config files created above and to map module names.
+
+First add the following required imports at the top of the file:
+```ts
+const { pathsToModuleNameMapper } = require('ts-jest/utils');
+const { compilerOptions } = require('./tsconfig');
+```
+
+Then add the following to the exported code:
+```ts
+modules.exports = {
+  //...usual info, name, presets etc
+  globalSetup: './test/jest-global-setup.ts',
+  // Module directories might already exists, if so just make sure 'test' is added
+  moduleDirectories: ['types', 'node_modules', 'src', 'test'],
+  moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
+    prefix: '<rootDir>/',
+  }),
+    setupFilesAfterEnv: [
+      // Only required if you are using jest-expect-message and have installed it
+    'jest-expect-message',
+    './test/setup-db-test-fixtures.ts',
+  ],
+  //...rest of the settings
+}
 ```
 
 #### DB Set up file
@@ -443,6 +487,14 @@ The difference here is the additional parameters object passed as
 
 this tells `nock` to keep returning the same result for each call.
 
+### Setting up TS
+Most of our services use modules for package look up so in order to reference test modules it's easiest to add the following to the `"paths"` section of the projects `tsconfig.json` file:
+
+```json
+      "test/*": ["test/*"]
+```
+
+
 ### Setting up the CI/CD Pipeline
 In order for the tests to run on the CI pipeline you have to make one change to the `config.yml` file found in the `.circelci` folder in the root folder of `tiney-services`
 
@@ -502,7 +554,7 @@ describe('/provider', () => {
   beforeAll(async () => {
     ({ server, agent } = await createServerApp(web, [
       {
-        path: '/core-hours',
+        path: '/provider',
         router,
       },
     ]));
@@ -518,7 +570,7 @@ describe('/provider', () => {
   });
 
   describe('GET /provider', () => {
-    it('should return 200 and all the providers in the DB', () => {
+    it('should return 200 and all the providers in the DB', async () => {
       const userSlug = generateSlug();
 
       // ARRANGE
