@@ -1,9 +1,10 @@
 version: '3.7'
 
 services: 
-  postgres:
-    image: postgres:11
+  mysql:
+    image: mysql/mysql-server:8.0
+    command: --default-authentication-plugin=mysql_native_password
     env_file:
-      - ./postgres-service-env
+      - ./mysql-service-env
     ports:
-      - 5555:5432/tcp
+      - 3333:3306/tcp
