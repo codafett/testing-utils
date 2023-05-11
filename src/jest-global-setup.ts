@@ -80,36 +80,38 @@ async function connectToDbAndRunMigrations(config) {
  * This file is executed by Jest before running any tests.
  * We drop the database and re-create it from migrations every time.
  */
-export const jestGlobalSetUp = (
-  databaseSettings: DatabaseSettings,
-  connectionSettings?: ConnectionSettings,
-) => async () => {
-  const dbConfigSettings = new DbConfigSettings(
-    databaseSettings,
-    connectionSettings,
-  );
-  // Make sure the DB exists
-  if (databaseSettings.dbType === DbType.MySql) {
-    await createDatabaseIfNotExistsMysql(dbConfigSettings);
-  } else if (databaseSettings.dbType === DbType.Postgres) {
-    await createDatabaseIfNotExistsPostgres(dbConfigSettings);
-  } else {
-    throw new Error(`DbType not known`);
-  }
+export const jestGlobalSetUp =
+  (
+    databaseSettings: DatabaseSettings,
+    connectionSettings?: ConnectionSettings,
+  ) =>
+  async () => {
+    const dbConfigSettings = new DbConfigSettings(
+      databaseSettings,
+      connectionSettings,
+    );
+    // Make sure the DB exists
+    if (databaseSettings.dbType === DbType.MySql) {
+      await createDatabaseIfNotExistsMysql(dbConfigSettings);
+    } else if (databaseSettings.dbType === DbType.Postgres) {
+      await createDatabaseIfNotExistsPostgres(dbConfigSettings);
+    } else {
+      throw new Error(`DbType not known`);
+    }
 
-  // Connect and run seeds
-  await connectToDbAndRunMigrations(
-    dbConfigSettings.testDbInitConfig,
-  );
+    // Connect and run seeds
+    await connectToDbAndRunMigrations(
+      dbConfigSettings.testDbInitConfig,
+    );
 
-  const { testDbSeedConfig, testDbTaskConfig } = dbConfigSettings;
-  // Connect and run test tasks if required
-  if (testDbTaskConfig) {
-    await connectToDbAndRunMigrations(testDbTaskConfig);
-  }
+    const { testDbSeedConfig, testDbTaskConfig } = dbConfigSettings;
+    // Connect and run test tasks if required
+    if (testDbTaskConfig) {
+      await connectToDbAndRunMigrations(testDbTaskConfig);
+    }
 
-  // Connect and run test seeds if required
-  if (testDbSeedConfig) {
-    await connectToDbAndRunMigrations(testDbSeedConfig);
-  }
-};
+    // Connect and run test seeds if required
+    if (testDbSeedConfig) {
+      await connectToDbAndRunMigrations(testDbSeedConfig);
+    }
+  };

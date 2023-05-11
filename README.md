@@ -11,11 +11,12 @@
   - [Setting up the scripts](#setting-up-the-scripts)
   - [Setting up docker-compose](#setting-up-docker-compose)
   - [Setting up Jest](#setting-up-jest)
-  - [CI/CD Pipeline](#cicd-pipeline)
+  - [Mocks](#mocks)
+  - [Setting up TS](#setting-up-ts)
+  - [Setting up the CI/CD Pipeline](#setting-up-the-cicd-pipeline)
   - [Anatomy of a API/DB controller test file](#anatomy-of-a-apidb-controller-test-file)
 
 <!-- /TOC -->
-
 
 ## Introduction
 
@@ -39,6 +40,8 @@ You should also install `ts-jest` and optionally `jest-expect-message`
 ```
 npm i @tiney/testing-utils@latest ts-jest jest-expect-message --save-dev
 ```
+
+You should also update `jest` to version `26.6.3`
 
 ## Setting up db/api testing in a service
 
@@ -97,6 +100,95 @@ For Postgres add:
     "test:db:up": "chmod +x test/.wait-for-it.sh && docker compose -f test/docker-compose.test.yml up -d && test/.wait-for-it.sh -t 0 127.0.0.1:555 -- echo 'db is up'",
 ```
 
+#### Setting up the database instance
+
+In order to get the tests to use the test database you need to update the sql connection file `src/datasources/sql/bootstrap/instance.ts`
+
+In most cases the file will look like this:
+
+```ts
+import Container from 'typedi';
+import {
+  Connection,
+  ConnectionOptions,
+  createConnection,
+  getConnection,
+  useContainer,
+} from 'typeorm';
+import {
+  initializeTransactionalContext,
+  patchTypeORMRepositoryWithBaseRepository,
+} from 'typeorm-transactional-cls-hooked';
+
+import buildConfig from './build-config';
+
+export async function sqlFactory() {
+  initializeTransactionalContext();
+  patchTypeORMRepositoryWithBaseRepository();
+  useContainer(Container);
+
+  let sql: Connection;
+
+  try {
+    sql = getConnection();
+  } catch {
+    const configs = await buildConfig();
+    sql = await createConnection(
+      // [0] - Default configuration
+      configs[0] as ConnectionOptions,
+    );
+  }
+
+  Container.set({
+    type: Connection,
+    value: sql,
+  });
+}
+```
+
+What we need to do is to allow a db config to be passed in, and when it is, to use that config instead of the default, so the updated file would look like this:
+
+```ts
+import Container from 'typedi';
+import {
+  Connection,
+  ConnectionOptions,
+  createConnection,
+  getConnection,
+  useContainer,
+} from 'typeorm';
+import {
+  initializeTransactionalContext,
+  patchTypeORMRepositoryWithBaseRepository,
+} from 'typeorm-transactional-cls-hooked';
+
+import buildConfig from './build-config';
+
+export async function sqlFactory(config?: ConnectionOptions) {
+  let connectionOptions = config;
+
+  initializeTransactionalContext();
+  patchTypeORMRepositoryWithBaseRepository();
+  useContainer(Container);
+
+  let sql: Connection;
+  if (!connectionOptions) {
+    const configs = await buildConfig();
+    connectionOptions = configs[0] as ConnectionOptions;
+  }
+
+  try {
+    sql = getConnection();
+  } catch {
+    sql = await createConnection(connectionOptions);
+  }
+
+  Container.set({
+    type: Connection,
+    value: sql,
+  });
+}
+```
 
 ### Setting up docker-compose
 Create a file called `docker-compose.test.yml` in the `test` folder of the project.
@@ -118,11 +210,9 @@ You need to update these files to replace the holder `**YOUR_DB_NAME_HERE**` wit
 ### Setting up Jest
 
 #### Database Settings
-First you need to set up the database settings.
+Create a file in the `test` folder called `database-settings.ts`.
 
 This file sets up all the TypeORM entities and migration details and is used at both global and individual test level which is why these settings are extracted to a common file.
-
-Create a file called `database-settings.ts` in the `test` folder created earlier.
 
 Copy the following code and paste it into this file:
 ```ts
@@ -146,24 +236,8 @@ __N.B.__ the value of the `databaseName` setting must be the same value entered 
 
 The location of entities seeds and migrationsDir are usually the same, but you may need to update these if they don't match your project.
 
-#### Env Settings
-In some cases you will need to mock out any environment settings that are retrieved in code using `getEnvs` method from `@tiney/infrastrucutre` project.
-
-Any settings that need to be used should be entered into a new file called `test-end-settings.ts` which needs to be created in the `test` folder.
-
-These are most often the URL's used to access external services and will allow them to be mocked correctly.
-
-__Example__ 
-```ts
-export default {
-  APP_SECRET_BLOCKS_URL: 'blocks-url/',
-  APP_SECRET_CARE_SCHEDULE_SERVICE_HOST: 'http://care-schedule:3000',
-  APP_SECRET_CORE_SERVICE_HOST: 'http://core:3000',
-};
-```
-
-#### Jest Global Settings
-Create another file in the `test` folder called `jest-global-setup.ts`.
+#### Global Settings
+Create a file in the `test` folder called `jest-global-setup.ts`.
 
 This file runs ONCE, BEFORE jest runs any tests and is used to create the DB and run migrations.
 
@@ -180,8 +254,7 @@ export default jestGlobalSetUp(databaseSettings);
 
 ```
 
-#### Update jest.config
-In `jest.config` you need to set up jest to use the config files created above and to map module names.
+In `jest.config` you need to set up jest to use the config file created above and to map module names.
 
 First add the following required imports at the top of the file:
 ```ts
@@ -202,7 +275,6 @@ modules.exports = {
     setupFilesAfterEnv: [
       // Only required if you are using jest-expect-message and have installed it
     'jest-expect-message',
-    './test/setup-db-test-fixtures.ts',
   ],
   //...rest of the settings
 }
@@ -215,9 +287,6 @@ This file is responsible for setting up the db before and after each test.
 
 Copy the following code and paste it into this file:
 ```ts
-// This file is executed once in the worker before executing each test file. We
-// wait for the database connection and make sure to close it afterwards.
-
 import { setUpTestFixtures } from '@tiney/testing-utils';
 
 import { sqlFactory } from '../src/datasources/sql';
@@ -227,13 +296,23 @@ setUpTestFixtures(sqlFactory, databaseSettings);
 
 ```
 
-#### Env Set up file
-This step is only required if you need to mock env variables returned from calls to `getEnvs` and only works by being in a separate file to the setting up of test fixture
+**Usage**
 
-Create another file in the `test` folder called `setup-get-envs-mock.ts`
-
-Copy the following code and paste it into this file:
+You need to import this file in **EVERY** test file that runs API.DB tests as follows:
 ```ts
+import 'test/setup-db-test-fixtures';
+```
+
+#### Mocks
+Create a folder under the `test` folder called `mocks`. 
+
+##### Mocking Env Settings
+This step is only required if you need to mock env variables returned from calls to `getEnvs` in `@tiney/infrastructure`.
+
+Create a file in the `mocks` folder called `mock-get-envs.ts` and add the following code:
+
+```ts
+import { getEnvs } from '@tiney/infrastructure';
 import { ServiceConfiguration } from 'services/configuration';
 import Container from 'typedi';
 
@@ -255,6 +334,13 @@ const serviceConfig = Container.get(ServiceConfiguration);
 ```
 
 __*N.B. The call to service config is only required if you are mocking out environment variables that hold urls of other services.*__
+
+**Usage**
+
+You need to import this file in **EVERY** test file that runs API.DB and requires env settings to be mocked:
+```ts
+import 'test/mocks/mock-get-envs.ts';
+```
 
 ##### __Mocking on specific tests only: generateSlug__
 
@@ -345,20 +431,29 @@ These can then be used in your test files as follows:
 ##### Other useful mocks
 A couple of other mocks I found useful (and have added support for) are creating agent notes and publishing topics. Technically these just require mocking `async` calls so I added support for that in `mock-promise.ts`
 
-To use these you can set up the following mocks in your `setup-get-envs-mock.ts` file:
+This method simply wraps your calls with a simple `Promise.resolve('done')` by default but the `mockAsyncCall` also accepts another parameter for the mock implementation method used.
 
-Import the helper:
-```ts
-```
+###### Mocking createAutoAgentNote
 
-Wrap the calls you need. This simply wraps them with a simple `Promise.resolve('done')` by default but the `mockAsyncCall` also accepts another parameter for the mock implementation method used.
+Create a file in `mocks` called `mock-create-agent-note.ts` and use the following code:
 
 ```ts
+import { agentNoteService } from '@tiney/infrastructure';
 import { mockAsyncCall } from '@tiney/testing-utils';
 
 export function mockCreateAgentNote() {
   return mockAsyncCall(agentNoteService, 'createAutoAgentNote');
 }
+```
+
+###### Mocking publishTopic
+
+Create a file in `mocks` called `mock-publish-topic.ts` and use the following code:
+
+
+```ts
+import { publishTopic } from '@tiney/infrastructure';
+import { mockAsyncCall } from '@tiney/testing-utils';
 
 export function mockPublishTopic() {
   return mockAsyncCall(pubsubService, 'publishTopic');
@@ -507,11 +602,33 @@ Find the job configuration for your service which will look something like this:
       - test-service:
           <<: *run-on-branch-or-deploy-tag
           package: << pipeline.parameters.tiney-billing-service >>
+
+      - deploy-service:
+          <<: *deploy-stage-with-requires
+          context:
+            - pubsub-topics
+            - services-stage
+            - services-billing-stage
+          package: << pipeline.parameters.tiney-billing-service >>
+          migration-url: https://europe-west2-tin-pro-service-staging.cloudfunctions.net/tiney-billing-service-dev-migrations/migrate
+          seed-url: https://europe-west2-tin-pro-service-staging.cloudfunctions.net/tiney-billing-service-dev-migrations/seed
+
+      - deploy-service:
+          <<: *deploy-prod-with-requires
+          context:
+            - pubsub-topics
+            - services-prod
+            - services-billing-prod
+          package: << pipeline.parameters.tiney-billing-service >>
+          migration-url: https://europe-west2-tin-pro-service-prod.cloudfunctions.net/tiney-billing-service-prod-migrations/migrate
+          seed-url: https://europe-west2-tin-pro-service-prod.cloudfunctions.net/tiney-billing-service-prod-migrations/seed
 ```
 
 and change `test-service` for either `test-service-with-mysql` or `test-service-with-postgres` as required.
 
 You also need to pass a new parameter `sql-database` to the job containing the name of youre test database - this needs to be the same value you set up in `test-env-settings.ts`
+
+You also need to change the `deploy-service` tasks to use `deploy-stage-with-requires-postgres`
 
 After you've finished your job configuration would look like this:
 ```yml
@@ -522,6 +639,26 @@ After you've finished your job configuration would look like this:
           <<: *run-on-branch-or-deploy-tag
           package: << pipeline.parameters.tiney-billing-service >>
           sql-database: billing-service-test-db
+
+      - deploy-service:
+          <<: *deploy-stage-with-requires-mysql
+          context:
+            - pubsub-topics
+            - services-stage
+            - services-billing-stage
+          package: << pipeline.parameters.tiney-billing-service >>
+          migration-url: https://europe-west2-tin-pro-service-staging.cloudfunctions.net/tiney-billing-service-dev-migrations/migrate
+          seed-url: https://europe-west2-tin-pro-service-staging.cloudfunctions.net/tiney-billing-service-dev-migrations/seed
+
+      - deploy-service:
+          <<: *deploy-prod-with-requires-mysql
+          context:
+            - pubsub-topics
+            - services-prod
+            - services-billing-prod
+          package: << pipeline.parameters.tiney-billing-service >>
+          migration-url: https://europe-west2-tin-pro-service-prod.cloudfunctions.net/tiney-billing-service-prod-migrations/migrate
+          seed-url: https://europe-west2-tin-pro-service-prod.cloudfunctions.net/tiney-billing-service-prod-migrations/seed
 ```
 ### Anatomy of a API/DB controller test file
 Putting all the parts together this is what's require to set up a test file to test an API end point.
