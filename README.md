@@ -236,6 +236,95 @@ __N.B.__ the value of the `databaseName` setting must be the same value entered 
 
 The location of entities seeds and migrationsDir are usually the same, but you may need to update these if they don't match your project.
 
+#### sqlFactory
+We also need to update the standard `sqlFactory` code in our service. This should be located in `src/datasources/sql/bootstrap/instance.ts` and will most likely look like this:
+
+```ts
+import Container from 'typedi';
+import {
+  Connection,
+  ConnectionOptions,
+  createConnection,
+  getConnection,
+  useContainer,
+} from 'typeorm';
+import {
+  initializeTransactionalContext,
+  patchTypeORMRepositoryWithBaseRepository,
+} from 'typeorm-transactional-cls-hooked';
+
+import buildConfig from './build-config';
+
+export async function sqlFactory() {
+  initializeTransactionalContext();
+  patchTypeORMRepositoryWithBaseRepository();
+  useContainer(Container);
+
+  let sql: Connection;
+
+  try {
+    sql = getConnection();
+  } catch {
+    const configs = await buildConfig();
+    sql = await createConnection(
+      // [0] - Default configuration
+      // [1] - Seeds
+      // [2] - Tasks
+      configs[0] as ConnectionOptions,
+    );
+  }
+
+  Container.set({
+    type: Connection,
+    value: sql,
+  });
+}
+```
+
+It needs updating to accept a config object and, if received, use it, or else use the default project config.
+
+```ts
+import Container from 'typedi';
+import {
+  Connection,
+  ConnectionOptions,
+  createConnection,
+  getConnection,
+  useContainer,
+} from 'typeorm';
+import {
+  initializeTransactionalContext,
+  patchTypeORMRepositoryWithBaseRepository,
+} from 'typeorm-transactional-cls-hooked';
+
+import buildConfig from './build-config';
+
+export async function sqlFactory(config?: ConnectionOptions) {
+  let connectionOptions = config;
+
+  initializeTransactionalContext();
+  patchTypeORMRepositoryWithBaseRepository();
+  useContainer(Container);
+
+  let sql: Connection;
+  if (!connectionOptions) {
+    const configs = await buildConfig();
+    connectionOptions = configs[0] as ConnectionOptions;
+  }
+
+  try {
+    sql = getConnection();
+  } catch {
+    sql = await createConnection(connectionOptions);
+  }
+
+  Container.set({
+    type: Connection,
+    value: sql,
+  });
+}
+```
+
 #### Global Settings
 Create a file in the `test` folder called `jest-global-setup.ts`.
 
