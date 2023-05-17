@@ -494,8 +494,10 @@ import { getEnvs } from '@tiney/infrastructure';
 import { when } from 'jest-when';
 import testEnvSettings from 'test/testEnvSettings';
 
-export function mockGetEnvsValue(name: string, value: string) {
-  when(getEnvs).calledWith(name).mockReturnValue(value);
+export function mockGetEnvs(envSettings: Record<string, unknown>) {
+  Object.entries(envSettings).forEach(([name, value]) => {
+    when(getEnvs).calledWith(name).mockReturnValue(value);
+  });
 }
 
 export function mockGetEnvsReset() {
@@ -511,10 +513,22 @@ export function mockGetEnvsReset() {
 These can then be used in your test files as follows:
 ```ts
   beforeEach(() => {
-    mockGetEnvsValue(
-      'APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED',
-      'false',
-    );
+    mockGetEnvsValue({
+      APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED: 'false',
+  });
+  });
+  afterEach(() => {
+    mockGetEnvsReset();
+  });
+```
+
+You can also mock multiple values:
+```ts
+  beforeEach(() => {
+    mockGetEnvsValue({
+      APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED: 'false',
+      APP_FEATURE_FLAG_USE_NEW_FEATURE: 'true',
+  });
   });
   afterEach(() => {
     mockGetEnvsReset();
