@@ -1,4 +1,4 @@
-import { Router, Express } from 'express';
+import { Express, Router } from 'express';
 import request from 'supertest';
 
 export async function createServerApp(

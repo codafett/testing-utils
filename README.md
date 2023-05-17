@@ -481,17 +481,21 @@ __*N.B. We have to tell typescript to expect an error as otherwise the code does
 
 There are also occasions when we need to override the env settings on a per test basis, for instance when testing a feature flag.
 
+The best solution is to install `jest-when` in your project and use the following solution
+
+`npm i jest-when --save-dev`
+
 Again this can be done relatively simply by adding a couple of helper functions to your `setup-get-envs-mock.ts` file as follows:
 
 ```ts
-export function mockGetEnvs(envs: Record<string, string>) {
-  // @ts-expect-error: Typescript is too dumb to know this has been mocked :P
-  getEnvs.mockImplementation((envName) => {
-    return {
-      ...testEnvSettings,
-      ...envs,
-    }[envName];
-  });
+import './mock-infra';
+
+import { getEnvs } from '@tiney/infrastructure';
+import { when } from 'jest-when';
+import testEnvSettings from 'test/testEnvSettings';
+
+export function mockGetEnvsValue(name: string, value: string) {
+  when(getEnvs).calledWith(name).mockReturnValue(value);
 }
 
 export function mockGetEnvsReset() {
@@ -507,10 +511,10 @@ export function mockGetEnvsReset() {
 These can then be used in your test files as follows:
 ```ts
   beforeEach(() => {
-    mockGetEnvs({
-      APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED:
-        'false',
-    });
+    mockGetEnvsValue(
+      'APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED',
+      'false',
+    );
   });
   afterEach(() => {
     mockGetEnvsReset();
@@ -541,7 +545,7 @@ Create a file in `mocks` called `mock-publish-topic.ts` and use the following co
 
 
 ```ts
-import { publishTopic } from '@tiney/infrastructure';
+import { pubsubService } from '@tiney/infrastructure';
 import { mockAsyncCall } from '@tiney/testing-utils';
 
 export function mockPublishTopic() {

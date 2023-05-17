@@ -56,7 +56,7 @@ export async function getEntity<ET>(
 export async function saveEntity<ET>(
   entityTarget: EntityTarget<ET>,
   entity?: ET,
-  getId?: (entity: ET) => string | number | Date,
+  getId?: (e: ET) => string | number | Date,
   options?: SaveEntityOptions<ET>,
 ): Promise<ET> {
   const repo = getRepository(entityTarget);
@@ -89,7 +89,7 @@ export async function saveEntity<ET>(
 export async function createAndSaveEntity<ET>(
   entityTarget: EntityTarget<ET>,
   entity: DeepPartial<ET>,
-  getId?: (entity: ET) => string | number | Date,
+  getId?: (e: ET) => string | number | Date,
   options?: SaveEntityOptions<ET>,
 ): Promise<ET> {
   const dbEntity = createEntity(entityTarget, entity);
