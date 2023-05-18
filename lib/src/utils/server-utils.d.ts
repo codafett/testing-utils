@@ -1,4 +1,4 @@
-import { Router, Express } from 'express';
+import { Express, Router } from 'express';
 export declare function createServerApp(app: ({ routes }: {
     routes: Router;
 }) => Promise<Express>, routeConfig: [{

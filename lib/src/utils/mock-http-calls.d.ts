@@ -1,12 +1,4 @@
 import nock, { Options, RequestBodyMatcher } from 'nock';
-export interface HttpCallDefinition {
-    url: string;
-    type: MockHttpCallType;
-    requestBody?: RequestBodyMatcher;
-    responseData?: unknown;
-    interceptorOptions?: Options;
-    status?: number;
-}
 export declare enum MockHttpCallType {
     HEAD = "head",
     GET = "get",
@@ -14,6 +6,15 @@ export declare enum MockHttpCallType {
     PUT = "put",
     PATCH = "patch",
     DELETE = "delete"
+}
+export interface HttpCallDefinition {
+    url: string;
+    type: MockHttpCallType;
+    requestBody?: RequestBodyMatcher;
+    responseData?: unknown;
+    interceptorOptions?: Options;
+    status?: number;
+    persist?: boolean;
 }
 export interface HttpMockOptions {
     allowUnmockedRequests?: boolean;
