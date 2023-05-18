@@ -70,6 +70,6 @@ export function mockHttpCalls(
   return scope;
 }
 
-export function throwOnUnmockedCall(handler: (req: unknown) => void) {
+export function onUnmockedCall(handler: (req: unknown) => void) {
   nock.emitter.on('no match', handler);
 }
