@@ -70,6 +70,10 @@ export function mockHttpCalls(
   return scope;
 }
 
+export function cleanAllMockHttpCalls() {
+  nock.cleanAll();
+}
+
 export function onUnmockedCall(handler: (req: unknown) => void) {
   nock.emitter.on('no match', handler);
 }
