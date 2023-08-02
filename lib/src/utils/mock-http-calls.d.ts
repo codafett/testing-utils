@@ -21,3 +21,5 @@ export interface HttpMockOptions {
     persist?: boolean;
 }
 export declare function mockHttpCalls(basePath: string, httpCallDefinitions: HttpCallDefinition[], options?: HttpMockOptions): nock.Scope;
+export declare function cleanAllMockHttpCalls(): void;
+export declare function onUnmockedCall(handler: (req: unknown) => void): void;
