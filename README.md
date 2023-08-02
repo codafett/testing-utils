@@ -97,7 +97,7 @@ For MySql add:
 
 For Postgres add:
 ```json
-    "test:db:up": "chmod +x test/.wait-for-it.sh && docker compose -f test/docker-compose.test.yml up -d && test/.wait-for-it.sh -t 0 127.0.0.1:555 -- echo 'db is up'",
+    "test:db:up": "chmod +x test/.wait-for-it.sh && docker compose -f test/docker-compose.test.yml up -d && test/.wait-for-it.sh -t 0 127.0.0.1:5555 -- echo 'db is up'",
 ```
 
 #### Setting up the database instance
@@ -236,95 +236,6 @@ __N.B.__ the value of the `databaseName` setting must be the same value entered 
 
 The location of entities seeds and migrationsDir are usually the same, but you may need to update these if they don't match your project.
 
-#### sqlFactory
-We also need to update the standard `sqlFactory` code in our service. This should be located in `src/datasources/sql/bootstrap/instance.ts` and will most likely look like this:
-
-```ts
-import Container from 'typedi';
-import {
-  Connection,
-  ConnectionOptions,
-  createConnection,
-  getConnection,
-  useContainer,
-} from 'typeorm';
-import {
-  initializeTransactionalContext,
-  patchTypeORMRepositoryWithBaseRepository,
-} from 'typeorm-transactional-cls-hooked';
-
-import buildConfig from './build-config';
-
-export async function sqlFactory() {
-  initializeTransactionalContext();
-  patchTypeORMRepositoryWithBaseRepository();
-  useContainer(Container);
-
-  let sql: Connection;
-
-  try {
-    sql = getConnection();
-  } catch {
-    const configs = await buildConfig();
-    sql = await createConnection(
-      // [0] - Default configuration
-      // [1] - Seeds
-      // [2] - Tasks
-      configs[0] as ConnectionOptions,
-    );
-  }
-
-  Container.set({
-    type: Connection,
-    value: sql,
-  });
-}
-```
-
-It needs updating to accept a config object and, if received, use it, or else use the default project config.
-
-```ts
-import Container from 'typedi';
-import {
-  Connection,
-  ConnectionOptions,
-  createConnection,
-  getConnection,
-  useContainer,
-} from 'typeorm';
-import {
-  initializeTransactionalContext,
-  patchTypeORMRepositoryWithBaseRepository,
-} from 'typeorm-transactional-cls-hooked';
-
-import buildConfig from './build-config';
-
-export async function sqlFactory(config?: ConnectionOptions) {
-  let connectionOptions = config;
-
-  initializeTransactionalContext();
-  patchTypeORMRepositoryWithBaseRepository();
-  useContainer(Container);
-
-  let sql: Connection;
-  if (!connectionOptions) {
-    const configs = await buildConfig();
-    connectionOptions = configs[0] as ConnectionOptions;
-  }
-
-  try {
-    sql = getConnection();
-  } catch {
-    sql = await createConnection(connectionOptions);
-  }
-
-  Container.set({
-    type: Connection,
-    value: sql,
-  });
-}
-```
-
 #### Global Settings
 Create a file in the `test` folder called `jest-global-setup.ts`.
 
@@ -404,12 +315,23 @@ In order to facilitate mocking specific env variable we need to use `jest-when` 
 npm i jest-when --save-dev
 ```
 
+Create a file to hold your mock env settings in called `test-env-settings.ts` in the `test` folder.
+
+It should hold your env settings, for example:
+```ts
+export default {
+  APP_SECRET_CORE_SERVICE_HOST: 'http://core:3000',
+  APP_ENV: 'local',
+};
+
+```
+
 Create a file in the `mocks` folder called `mock-get-envs.ts` and add the following code:
 
 ```ts
 import { getEnvs } from '@tiney/infrastructure';
 import { when } from 'jest-when';
-import testEnvSettings from 'test/testEnvSettings';
+import testEnvSettings from 'test/test-env-settings';
 
 export function mockGetEnvs(envs: Record<string, string>) {
   Object.entries(envs).forEach(([name, value]) => {
@@ -571,7 +493,7 @@ export function mockPublishTopic() {
 Instead of having to import both `setup-db-test-fixtures` and `setup-mock-test-fixtures` in each test file (as they are predominantly used together) I found it easier to create another file in the `test` folder called `setup-api-test-fixtures` with the following contents:
 
 ```ts
-import 'test/setup-infra-mock-test-fixtures';
+import 'test/mocks/mock-infra';
 import 'test/setup-db-test-fixtures';
 ```
 
@@ -772,6 +694,8 @@ To set up testing we create a `index.test.ts` file in the same location.
 The basic test file would contain the following:
 
 ```ts
+import 'test/setup-db-test-fixtures';
+
 import {
   generateSlug,
   web,
