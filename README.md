@@ -398,27 +398,59 @@ Create a folder under the `test` folder called `mocks`.
 ##### Mocking Env Settings
 This step is only required if you need to mock env variables returned from calls to `getEnvs` in `@tiney/infrastructure`.
 
+In order to facilitate mocking specific env variable we need to use `jest-when` package so install this first:
+
+```shell
+npm i jest-when --save-dev
+```
+
 Create a file in the `mocks` folder called `mock-get-envs.ts` and add the following code:
 
 ```ts
 import { getEnvs } from '@tiney/infrastructure';
+import { when } from 'jest-when';
+import testEnvSettings from 'test/testEnvSettings';
+
+export function mockGetEnvs(envs: Record<string, string>) {
+  Object.entries(envs).forEach(([name, value]) => {
+    when(getEnvs).calledWith(name).mockReturnValue(value);
+  });
+}
+
+export function mockGetEnvsReset() {
+  // @ts-expect-error: Typescript is too dumb to know this has been mocked :P
+  getEnvs.mockImplementation((envName) => {
+    return {
+      ...testEnvSettings,
+    }[envName];
+  });
+}
+```
+
+Create a file in the `mocks` folder called `mock-infra.ts` and add the following code:
+
+```ts
 import { ServiceConfiguration } from 'services/configuration';
+import testEnvSettings from 'test/testEnvSettings';
 import Container from 'typedi';
 
-import testEnvSettings from './test-env-settings';
+import { mockGetEnvs } from './mock-get-envs';
 
 jest.mock('@tiney/infrastructure', () => {
   const actual = jest.requireActual('@tiney/infrastructure') as {};
   return {
     ...actual,
-    getEnvs: jest
-      .fn()
-      .mockImplementation((envName) => testEnvSettings[envName]),
+    getEnvs: jest.fn(),
   };
 });
 
+// This is only required if you are mocking out environment variables
+// that hold urls of other services
 const serviceConfig = Container.get(ServiceConfiguration);
 (async () => serviceConfig.init())();
+
+mockGetEnvs(testEnvSettings);
+
 
 ```
 
@@ -428,7 +460,30 @@ __*N.B. The call to service config is only required if you are mocking out envir
 
 You need to import this file in **EVERY** test file that runs API.DB and requires env settings to be mocked:
 ```ts
-import 'test/mocks/mock-get-envs.ts';
+import 'test/mocks/mock-infra.ts';
+```
+
+You can then mock out any env settings on a per setting basis by using the following code:
+```javascript
+  beforeEach(() => {
+    mockGetEnvsValue({
+      APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED: 'false',
+  });
+  afterEach(() => {
+    mockGetEnvsReset();
+  });
+```
+
+You can also mock multiple values:
+```ts
+  beforeEach(() => {
+    mockGetEnvsValue({
+      APP_FEATURE_FLAG_RATES_MOVED_TO_CARE_SCHEDULE_ENABLED: 'false',
+      APP_FEATURE_FLAG_USE_NEW_FEATURE: 'true',
+  });
+  afterEach(() => {
+    mockGetEnvsReset();
+  });
 ```
 
 ##### __Mocking on specific tests only: generateSlug__
@@ -439,9 +494,10 @@ In order to get round this we first mock out `generateSlug` but we default it to
 
 ```ts
 import { ServiceConfiguration } from 'services/configuration';
+import testEnvSettings from 'test/testEnvSettings';
 import Container from 'typedi';
 
-import testEnvSettings from './test-env-settings';
+import { mockGetEnvs } from './mock-get-envs';
 
 jest.mock('@tiney/infrastructure', () => {
   const actual = jest.requireActual('@tiney/infrastructure') as {};
@@ -451,15 +507,14 @@ jest.mock('@tiney/infrastructure', () => {
       .fn()
       // @ts-expect-error: Typescript is too dumb to know this has been mocked :P
       .mockImplementation(() => actual.generateSlug()),
-    getEnvs: jest
-      .fn()
-      .mockImplementation((envName) => testEnvSettings[envName]),
+    getEnvs: jest.fn(),
   };
 });
 
+mockGetEnvs(testEnvSettings);
+
 const serviceConfig = Container.get(ServiceConfiguration);
 (async () => serviceConfig.init())();
-
 ```
 
 Then in the test file we need a specific implementation of the function we would need to first import the original library
@@ -567,6 +622,15 @@ export function mockPublishTopic() {
 }
 ```
 
+#### Setting up db and mocks
+
+Instead of having to import both `setup-db-test-fixtures` and `setup-mock-test-fixtures` in each test file (as they are predominantly used together) I found it easier to create another file in the `test` folder called `setup-api-test-fixtures` with the following contents:
+
+```ts
+import 'test/setup-infra-mock-test-fixtures';
+import 'test/setup-db-test-fixtures';
+```
+
 #### Database Utils
 This package provides some quick and easy methods to populating and reading data in your database.
 
@@ -619,75 +683,62 @@ import {
 } from '@tiney/testing-utils';
 ```
 
-__Example: Per test mocking__
+__Persist option__
+There is a `persist` property for both the host level and for each definition. This determines if the mock is used for multiple calls
+
+__Example: Authentication mocking__
 
 This is an example of a service mocking calls to `tiney-core-service` for authentication and to get an enrolment.
 
-This is how you'd write the mock if you were mocking for a single test (i.e. within a `test` ro `it` block)
 ```ts
-    mockHttpCalls(testEnvSettings.APP_SECRET_CORE_SERVICE_HOST, [
-      {
-        url: '/internal/auth/me',
-        type: MockHttpCallType.GET,
-        responseData: {
-          id: 1,
-          roles: ['site-admin'],
-          user: { isAdmin: { slug: userSlug } },
-        },
-      },
-      {
-        url: `/internal/enrollment/${enrollmentSlug}`,
-        type: MockHttpCallType.GET,
-        responseData: {
-          slug: enrollmentSlug,
-          provider: {
-            slug: providerSlug,
+    mockHttpCalls(
+      testEnvSettings.APP_SECRET_CORE_SERVICE_HOST,
+      [
+        {
+          url: '/internal/auth/me',
+          type: MockHttpCallType.GET,
+          responseData: {
+            id: 1,
+            roles: ['site-admin'],
+            user: { isAdmin: { slug: userSlug } },
           },
         },
-      },
-    ]);
+        {
+          url: `/internal/enrollment/${enrollmentSlug}`,
+          type: MockHttpCallType.GET,
+          responseData: {
+            slug: enrollmentSlug,
+            provider: {
+              slug: providerSlug,
+            },
+          },
+        },
+      ],
+      { persist: true}
+    );
 ```
 
-__Example: Per describe mocking__
+__Example: Authentication when calling another service__
 
-This is the same example but this time we might want the call to return the same result for all our tests within a describe block.
+If the method under test makes a call to another service then there is another step of authorisation. In order to bypass a call out to google.getServiceJwt we can mock the return value as `local-token` as follows:
 
-For this we'd include the following with a `beforeEach` or `beforeAll` method
 ```ts
-    mockHttpCalls(testEnvSettings.APP_SECRET_CORE_SERVICE_HOST, [
-      {
-        url: '/internal/auth/me',
-        type: MockHttpCallType.GET,
-        responseData: {
-          id: 1,
-          roles: ['site-admin'],
-          user: { isAdmin: { slug: userSlug } },
-        },
-      },
-      {
-        url: `/internal/enrollment/${enrollmentSlug}`,
-        type: MockHttpCallType.GET,
-        responseData: {
-          slug: enrollmentSlug,
-          provider: {
-            slug: providerSlug,
-          },
-        },
-      },
-    ],
+mockHttpCalls(
+  'http://metadata/computeMetadata',
+  [
     {
-      persist: true,
-    });
-```
+      type: MockHttpCallType.GET,
+      url: `/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(
+        testEnvSettings.APP_SECRET_CARE_SCHEDULE_SERVICE_HOST,
+      )}`,
+      status: 200,
+      responseData: 'local-token',
+    },
+  ],
+  { persist: true },
+);
 
-The difference here is the additional parameters object passed as 
-```ts
-  {
-    persist: true,
-  }
 ```
-
-this tells `nock` to keep returning the same result for each call.
 
 ### Setting up TS
 Most of our services use modules for package look up so in order to reference test modules it's easiest to add the following to the `"paths"` section of the projects `tsconfig.json` file:

@@ -6,15 +6,7 @@ import nock, {
   Scope,
 } from 'nock';
 
-export interface HttpCallDefinition {
-  url: string;
-  type: MockHttpCallType;
-  requestBody?: RequestBodyMatcher;
-  responseData?: unknown;
-  interceptorOptions?: Options;
-  status?: number;
-}
-
+// eslint-disable-next-line no-shadow
 export enum MockHttpCallType {
   HEAD = 'head',
   GET = 'get',
@@ -24,17 +16,25 @@ export enum MockHttpCallType {
   DELETE = 'delete',
 }
 
-const httpCalls: Record<
-  string,
-  (scope: Scope) => InterceptFunction
-> = {
-  [MockHttpCallType.HEAD]: (scope: Scope) => scope.head,
-  [MockHttpCallType.GET]: (scope: Scope) => scope.get,
-  [MockHttpCallType.POST]: (scope: Scope) => scope.post,
-  [MockHttpCallType.PUT]: (scope: Scope) => scope.put,
-  [MockHttpCallType.PATCH]: (scope: Scope) => scope.patch,
-  [MockHttpCallType.DELETE]: (scope: Scope) => scope.delete,
-};
+export interface HttpCallDefinition {
+  url: string;
+  type: MockHttpCallType;
+  requestBody?: RequestBodyMatcher;
+  responseData?: unknown;
+  interceptorOptions?: Options;
+  status?: number;
+  persist?: boolean;
+}
+
+const httpCalls: Record<string, (scope: Scope) => InterceptFunction> =
+  {
+    [MockHttpCallType.HEAD]: (scope: Scope) => scope.head,
+    [MockHttpCallType.GET]: (scope: Scope) => scope.get,
+    [MockHttpCallType.POST]: (scope: Scope) => scope.post,
+    [MockHttpCallType.PUT]: (scope: Scope) => scope.put,
+    [MockHttpCallType.PATCH]: (scope: Scope) => scope.patch,
+    [MockHttpCallType.DELETE]: (scope: Scope) => scope.delete,
+  };
 
 export interface HttpMockOptions {
   allowUnmockedRequests?: boolean;
@@ -58,12 +58,18 @@ export function mockHttpCalls(
       httpCallDefinition.requestBody,
       httpCallDefinition.interceptorOptions,
     );
-    httpInterceptor.reply(httpCallDefinition.status || 200, {
-      data: httpCallDefinition.responseData,
-    });
+    httpInterceptor
+      .reply(httpCallDefinition.status || 200, {
+        data: httpCallDefinition.responseData,
+      })
+      .persist(httpCallDefinition.persist);
   });
   if (options.persist) {
     scope.persist();
   }
   return scope;
+}
+
+export function onUnmockedCall(handler: (req: unknown) => void) {
+  nock.emitter.on('no match', handler);
 }
