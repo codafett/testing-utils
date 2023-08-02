@@ -315,6 +315,7 @@ In order to facilitate mocking specific env variable we need to use `jest-when` 
 npm i jest-when --save-dev
 ```
 
+<<<<<<< HEAD
 Create a file to hold your mock env settings in called `test-env-settings.ts` in the `test` folder.
 
 It should hold your env settings, for example:
@@ -326,12 +327,18 @@ export default {
 
 ```
 
+=======
+>>>>>>> main
 Create a file in the `mocks` folder called `mock-get-envs.ts` and add the following code:
 
 ```ts
 import { getEnvs } from '@tiney/infrastructure';
 import { when } from 'jest-when';
+<<<<<<< HEAD
 import testEnvSettings from 'test/test-env-settings';
+=======
+import testEnvSettings from 'test/testEnvSettings';
+>>>>>>> main
 
 export function mockGetEnvs(envs: Record<string, string>) {
   Object.entries(envs).forEach(([name, value]) => {
@@ -493,7 +500,11 @@ export function mockPublishTopic() {
 Instead of having to import both `setup-db-test-fixtures` and `setup-mock-test-fixtures` in each test file (as they are predominantly used together) I found it easier to create another file in the `test` folder called `setup-api-test-fixtures` with the following contents:
 
 ```ts
+<<<<<<< HEAD
 import 'test/mocks/mock-infra';
+=======
+import 'test/setup-infra-mock-test-fixtures';
+>>>>>>> main
 import 'test/setup-db-test-fixtures';
 ```
 
