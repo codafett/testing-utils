@@ -606,6 +606,132 @@ mockHttpCalls(
 
 ```
 
+#### Clean up your mocks!
+Mocks are really useful and work really well, however there's one caveat with nock, if you set up a mock in a test suite and DON'T use it (because the code doesn't reach the call) then it stays mocked. If you then have a subsequent test that redefines the mocked call it gets added to a list and your test suite will actually received the first call mocked.
+
+__Example: Mocks not being cleared__
+
+```ts
+describe('test admin user', () => {
+  beforeEach(() => {
+        mockHttpCalls(
+      testEnvSettings.APP_SECRET_CORE_SERVICE_HOST,
+      [
+        {
+          url: '/internal/auth/me',
+          type: MockHttpCallType.GET,
+          responseData: {
+            id: 1,
+            roles: ['site-admin'],
+            user: { isAdmin: { slug: userSlug } },
+          },
+        },
+      ],
+    );
+  })
+  it('should return error before calling the auth for user 1', () => {
+    // this execute but the code doesn't reach the line that would call the mocked end point
+  })
+})
+
+describe('test manager user', () => {
+  beforeEach(() => {
+        mockHttpCalls(
+      testEnvSettings.APP_SECRET_CORE_SERVICE_HOST,
+      [
+        {
+          url: '/internal/auth/me',
+          type: MockHttpCallType.GET,
+          responseData: {
+            id: 1,
+            roles: ['manager'],
+                user: {
+                  testSuite: 2,
+                  isManager: {
+                    provider: {
+                      slug: `prv_${providerSlug}`,
+                    },
+                  },
+                },
+          },
+        },
+      ],
+    );
+  })
+  it('should return manager', () => {
+    // when this executes and the code calls `internal/auth/me` it'll get the 
+    // admin user set up in the first test because nock doesn't remove the
+    // previous mocks by default
+  })
+})
+
+```
+
+In order to prevent this you need to make sure you call the `cleanAllMockHttpCalls` method after each test that uses a mocked http call.
+
+__Example: Clearing mocks correctly__
+
+```ts
+describe('test admin user', () => {
+  beforeEach(() => {
+        mockHttpCalls(
+      testEnvSettings.APP_SECRET_CORE_SERVICE_HOST,
+      [
+        {
+          url: '/internal/auth/me',
+          type: MockHttpCallType.GET,
+          responseData: {
+            id: 1,
+            roles: ['site-admin'],
+            user: { isAdmin: { slug: userSlug } },
+          },
+        },
+      ],
+    );
+  });
+  afterEach(() => {
+    cleanAllMockHttpCalls()
+  })
+  it('should return error before calling the auth for user 1', () => {
+    // this execute but the code doesn't reach the line that would call the mocked end point
+  })
+})
+
+describe('test manager user', () => {
+  beforeEach(() => {
+        mockHttpCalls(
+      testEnvSettings.APP_SECRET_CORE_SERVICE_HOST,
+      [
+        {
+          url: '/internal/auth/me',
+          type: MockHttpCallType.GET,
+          responseData: {
+            id: 1,
+            roles: ['manager'],
+                user: {
+                  testSuite: 2,
+                  isManager: {
+                    provider: {
+                      slug: `prv_${providerSlug}`,
+                    },
+                  },
+                },
+          },
+        },
+      ],
+    );
+  })
+  afterEach(() => {
+    cleanAllMockHttpCalls()
+  })
+  it('should return manager', () => {
+    // when this executes and the code calls `internal/auth/me` it'll get the 
+    // manager user now
+  })
+})
+
+```
+
 ### Setting up TS
 Most of our services use modules for package look up so in order to reference test modules it's easiest to add the following to the `"paths"` section of the projects `tsconfig.json` file:
 
