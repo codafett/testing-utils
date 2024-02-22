@@ -1,4 +1,4 @@
-# `@tiney/testing-utils`
+# `testing-utils`
 
 <!-- TOC tocDepth:2..3 chapterDepth:2..6 -->
 
